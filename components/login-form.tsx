@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { Eye, EyeOff, User, Lock, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { loginUser, getDashboardRoute } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -26,10 +28,26 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 2000);
+    setError("");
+
+    try {
+      const response = await loginUser({ username, password });
+      const route = getDashboardRoute(response.roles);
+      router.push(route);
+    } catch (err: any) {
+      setError(err.message || "Failed to login. Please verify your credentials.");
+      console.error("Login failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -55,23 +73,25 @@ export function LoginForm() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email */}
+        {/* Username */}
         <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible" className="space-y-1.5">
-          <Label htmlFor="email" className="text-sm font-semibold text-[#374151]">
-            Email address
+          <Label htmlFor="username" className="text-sm font-semibold text-[#374151]">
+            Username
           </Label>
           <div className="relative">
-            <Mail
+            <User
               className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
-                focused === "email" ? "text-[#4F46E5]" : "text-[#94A3B8]"
+                focused === "username" ? "text-[#4F46E5]" : "text-[#94A3B8]"
               }`}
             />
             <Input
-              id="email"
-              type="email"
-              placeholder="you@school.com"
+              id="username"
+              type="text"
+              placeholder="Enter your username"
               required
-              onFocus={() => setFocused("email")}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onFocus={() => setFocused("username")}
               onBlur={() => setFocused(null)}
               className="pl-10 h-12 rounded-xl border-[#E2E8F0] bg-white text-[#0F172A] placeholder:text-[#CBD5E1] shadow-sm focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 transition-all duration-200"
             />
@@ -102,6 +122,8 @@ export function LoginForm() {
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               onFocus={() => setFocused("password")}
               onBlur={() => setFocused(null)}
               className="pl-10 pr-11 h-12 rounded-xl border-[#E2E8F0] bg-white text-[#0F172A] placeholder:text-[#CBD5E1] shadow-sm focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 transition-all duration-200"
@@ -126,6 +148,13 @@ export function LoginForm() {
             </button>
           </div>
         </motion.div>
+
+        {/* Error Message */}
+        {error && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+            <p className="text-sm font-medium text-red-500">{error}</p>
+          </motion.div>
+        )}
 
         {/* Submit */}
         <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible" className="pt-1">

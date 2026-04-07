@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, Menu, X, LogOut, Bell, ChevronRight, Search, Sparkles } from "lucide-react";
+import { GraduationCap, Menu, X, LogOut, Bell, ChevronRight, Search, Sparkles, Loader2 } from "lucide-react";
+import { logoutUser } from "@/lib/auth";
 
 export interface SidebarLink {
   title: string;
@@ -50,6 +51,12 @@ function SidebarContent({
   onLinkClick?: () => void;
 }) {
   const config = roleConfig[roleTitle] ?? roleConfig["Super Admin"];
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    await logoutUser(); // handles redirect internally
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -141,12 +148,16 @@ function SidebarContent({
         <motion.button
           whileHover={{ x: 2 }}
           whileTap={{ scale: 0.97 }}
-          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/40 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group"
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/40 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <span className="flex items-center justify-center h-7 w-7 rounded-lg bg-white/5 group-hover:bg-red-500/10 transition-colors shrink-0">
-            <LogOut className="h-3.5 w-3.5" />
+            {isSigningOut
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <LogOut className="h-3.5 w-3.5" />}
           </span>
-          Sign Out
+          {isSigningOut ? "Signing out…" : "Sign Out"}
         </motion.button>
       </div>
     </div>
