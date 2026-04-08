@@ -7,9 +7,45 @@ const COOKIE_FETCH_OPTIONS: Pick<RequestInit, "credentials"> = {
   credentials: "include",
 };
 
+function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+  return fetch(input, {
+    ...COOKIE_FETCH_OPTIONS,
+    ...init,
+  });
+}
+
 function getAccessToken(): string | null {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("access_token");
+    const directToken = localStorage.getItem("access_token");
+    if (directToken) return directToken;
+    const plainToken = localStorage.getItem("token");
+    if (plainToken) return plainToken;
+    const altToken = localStorage.getItem("authToken");
+    if (altToken) return altToken;
+
+    // Fallback for persisted stores that keep auth under { state: { token } }.
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      try {
+        const parsed = JSON.parse(raw) as { state?: { token?: unknown }; token?: unknown };
+        const nestedToken = parsed?.state?.token;
+        if (typeof nestedToken === "string" && nestedToken.length > 0) {
+          return nestedToken;
+        }
+
+        const flatToken = parsed?.token;
+        if (typeof flatToken === "string" && flatToken.length > 0) {
+          return flatToken;
+        }
+      } catch {
+        // Ignore non-JSON values in localStorage.
+      }
+    }
   }
   return null;
 }
@@ -21,10 +57,12 @@ function getRefreshToken(): string | null {
   return null;
 }
 
-function setTokens(access: string, refresh: string) {
+function setTokens(access: string, refresh?: string | null) {
   if (typeof window !== "undefined") {
     localStorage.setItem("access_token", access);
-    localStorage.setItem("refresh_token", refresh);
+    if (typeof refresh === "string" && refresh.length > 0) {
+      localStorage.setItem("refresh_token", refresh);
+    }
   }
 }
 
@@ -40,8 +78,7 @@ function clearTokens() {
 export async function loginUser(credentials: LoginRequest): Promise<LoginResponse> {
   const url = `${API_BASE_URL}${API_ENDPOINTS.LOGIN}`;
 
-  const response = await fetch(url, {
-    ...COOKIE_FETCH_OPTIONS,
+  const response = await apiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(credentials),
@@ -56,10 +93,11 @@ export async function loginUser(credentials: LoginRequest): Promise<LoginRespons
     throw new Error(message);
   }
 
-  const data = await response.json() as LoginResponse;
-  
-  if (data.access && data.refresh) {
-    setTokens(data.access, data.refresh);
+  const data = await response.json() as LoginResponse & { token?: string };
+  const accessToken = data.access || data.token;
+
+  if (accessToken) {
+    setTokens(accessToken, data.refresh);
   }
 
   return data;
@@ -81,8 +119,7 @@ export async function refreshToken(): Promise<boolean> {
 
   try {
     const url = `${API_BASE_URL}${API_ENDPOINTS.REFRESH}`;
-    const response = await fetch(url, {
-      ...COOKIE_FETCH_OPTIONS,
+    const response = await apiFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: requestBody,
@@ -90,8 +127,8 @@ export async function refreshToken(): Promise<boolean> {
     
     if (response.ok) {
         const data = await response.json();
-        const newAccess = data.access;
-        const newRefresh = data.refresh || refresh; 
+        const newAccess = data.access || data.token;
+        const newRefresh = data.refresh || refresh;
         if (newAccess) {
             setTokens(newAccess, newRefresh);
             return true;
@@ -117,8 +154,7 @@ export async function fetchWithAuth(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(url, {
-    ...COOKIE_FETCH_OPTIONS,
+  const response = await apiFetch(url, {
     ...init,
     headers,
   });
@@ -133,8 +169,7 @@ export async function fetchWithAuth(
     if (newToken) {
         newHeaders.set("Authorization", `Bearer ${newToken}`);
     }
-    return fetch(url, {
-      ...COOKIE_FETCH_OPTIONS,
+    return apiFetch(url, {
       ...init,
       headers: newHeaders,
     });
@@ -147,9 +182,6 @@ export async function fetchWithAuth(
 
   if (!refreshed) {
     clearTokens();
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
     return response;
   }
 
@@ -158,8 +190,7 @@ export async function fetchWithAuth(
   if (freshToken) {
     retryHeaders.set("Authorization", `Bearer ${freshToken}`);
   }
-  return fetch(url, {
-    ...COOKIE_FETCH_OPTIONS,
+  return apiFetch(url, {
     ...init,
     headers: retryHeaders,
   });
@@ -175,8 +206,7 @@ export async function logoutUser(): Promise<void> {
   }
 
   try {
-    await fetch(`${API_BASE_URL}/logout/`, {
-      ...COOKIE_FETCH_OPTIONS,
+    await apiFetch(`${API_BASE_URL}/logout/`, {
       method: "POST",
       headers,
     });

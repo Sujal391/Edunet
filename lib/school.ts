@@ -1,5 +1,5 @@
 import { API_BASE_URL, API_ENDPOINTS } from "./config";
-import { School, CreateSchoolResponse } from "../types";
+import { School, CreateSchoolPayload, CreateSchoolResponse } from "../types";
 import { fetchWithAuth } from "./auth";
 
 const SCHOOL_URL = `${API_BASE_URL}${API_ENDPOINTS.SCHOOL}`;
@@ -28,7 +28,7 @@ export async function getSchools(): Promise<School[]> {
  * Uses fetchWithAuth so the token is silently refreshed on 401.
  */
 export async function createSchool(
-  payload: Omit<School, "id">
+  payload: CreateSchoolPayload
 ): Promise<CreateSchoolResponse> {
   const response = await fetchWithAuth(SCHOOL_URL, {
     method: "POST",
@@ -40,7 +40,10 @@ export async function createSchool(
     let message = "Failed to create school.";
     try {
       const err = await response.json();
-      message = err?.detail || err?.message || message;
+      const fieldErrors = Object.values(err || {})
+        .flat()
+        .filter((value): value is string => typeof value === "string");
+      message = err?.detail || err?.message || fieldErrors[0] || message;
     } catch { /* ignore */ }
     throw new Error(message);
   }

@@ -10,12 +10,15 @@ import {
   Loader2, Building2, X, RefreshCw, Hash
 } from "lucide-react";
 import { getSchools, createSchool } from "@/lib/school";
-import { School } from "@/types";
+import { CreateSchoolPayload, School } from "@/types";
 
-const EMPTY_FORM: Omit<School, "id"> = {
+const EMPTY_FORM: CreateSchoolPayload = {
   name: "", email: "", phone: "",
   address: "", city: "", state: "", country: "", pincode: "",
+  is_active: true,
 };
+
+type FormFieldKey = Exclude<keyof CreateSchoolPayload, "is_active">;
 
 export default function SuperAdminDashboard() {
   const [schools, setSchools] = useState<School[]>([]);
@@ -43,7 +46,7 @@ export default function SuperAdminDashboard() {
     fetchSchools();
   }, [fetchSchools]);
 
-  const handleChange = (field: keyof typeof EMPTY_FORM) =>
+  const handleChange = (field: FormFieldKey) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
 
@@ -54,7 +57,7 @@ export default function SuperAdminDashboard() {
     setSuccessMsg("");
     try {
       const res = await createSchool(formData);
-      setSuccessMsg(res.meassage || "School created successfully.");
+      setSuccessMsg(res.meassage || res.message || "School created successfully.");
       setFormData(EMPTY_FORM);
       setIsAdding(false);
       await fetchSchools();
@@ -66,7 +69,7 @@ export default function SuperAdminDashboard() {
   };
 
   const fields: {
-    key: keyof typeof EMPTY_FORM;
+    key: FormFieldKey;
     label: string;
     placeholder: string;
     type?: string;
@@ -185,6 +188,7 @@ export default function SuperAdminDashboard() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100 text-xs uppercase tracking-wider">
               <tr>
+                <th className="px-6 py-4">Code</th>
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">Email</th>
                 <th className="px-6 py-4">Phone</th>
@@ -192,19 +196,20 @@ export default function SuperAdminDashboard() {
                 <th className="px-6 py-4">State</th>
                 <th className="px-6 py-4">Country</th>
                 <th className="px-6 py-4">Pincode</th>
+                <th className="px-6 py-4">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isFetching ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={9} className="px-6 py-12 text-center">
                     <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5] mx-auto" />
                     <p className="text-gray-400 text-sm mt-2">Loading schools…</p>
                   </td>
                 </tr>
               ) : schools.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={9} className="px-6 py-12 text-center">
                     <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                     <p className="text-gray-400 text-sm">No schools found. Create one to get started.</p>
                   </td>
@@ -218,13 +223,25 @@ export default function SuperAdminDashboard() {
                     transition={{ delay: idx * 0.04 }}
                     className="hover:bg-gray-50/60 transition-colors"
                   >
-                    <td className="px-6 py-4 font-medium text-gray-900">{school.name}</td>
-                    <td className="px-6 py-4 text-gray-600">{school.email}</td>
-                    <td className="px-6 py-4 text-gray-600">{school.phone}</td>
-                    <td className="px-6 py-4 text-gray-600">{school.city}</td>
-                    <td className="px-6 py-4 text-gray-600">{school.state}</td>
-                    <td className="px-6 py-4 text-gray-600">{school.country}</td>
-                    <td className="px-6 py-4 text-gray-600">{school.pincode}</td>
+                    <td className="px-6 py-4 text-gray-600">{school.code || "-"}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{school.name || "-"}</td>
+                    <td className="px-6 py-4 text-gray-600">{school.email || "-"}</td>
+                    <td className="px-6 py-4 text-gray-600">{school.phone || "-"}</td>
+                    <td className="px-6 py-4 text-gray-600">{school.city || "-"}</td>
+                    <td className="px-6 py-4 text-gray-600">{school.state || "-"}</td>
+                    <td className="px-6 py-4 text-gray-600">{school.country || "-"}</td>
+                    <td className="px-6 py-4 text-gray-600">{school.pincode || "-"}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                          school.is_active ?? true
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-red-50 text-red-700"
+                        }`}
+                      >
+                        {school.is_active ?? true ? "Active" : "Inactive"}
+                      </span>
+                    </td>
                   </motion.tr>
                 ))
               )}
