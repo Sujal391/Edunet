@@ -1,184 +1,394 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  BadgeIndianRupee,
+  Calendar,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  RefreshCw,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Users, Mail, Phone, Loader2, Filter } from "lucide-react";
+import { createStaff, getStaffList } from "@/lib/staff";
+import { CreateStaffPayload, Staff, StaffCategory } from "@/types";
 
-// Mock Data
-const initialStaff = [
-  { id: 1, name: "Dr. Richard Hendricks", email: "richard@school.edu", phone: "+91 9000000001", role: "Principal", school: "Sunrise Academy" },
-  { id: 2, name: "Dinesh Chugtai", email: "dinesh@school.edu", phone: "+91 9000000002", role: "Teacher", school: "Sunrise Academy" },
-  { id: 3, name: "Jared Dunn", email: "jared@school.edu", phone: "+91 9000000003", role: "Admin", school: "Global Edu Trust" },
+const STAFF_CATEGORIES: { label: string; value: StaffCategory }[] = [
+  { label: "Teaching", value: "teaching" },
+  { label: "Non Teaching", value: "non_teaching" },
+  { label: "Admin", value: "admin" },
+  { label: "Support", value: "support" },
+  { label: "Account", value: "account" },
+  { label: "Library", value: "library" },
+  { label: "Other", value: "other" },
 ];
 
-const ROLES = ["Principal", "Teacher", "Admin", "Support"];
+const EMPTY_FORM: CreateStaffPayload = {
+  name: "",
+  email: "",
+  phone_number: "",
+  category: "teaching",
+  address: "",
+  date_of_birth: "",
+  salary: "",
+  is_active: true,
+};
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function TrusteeDashboard() {
-  const [staffList, setStaffList] = useState(initialStaff);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [formData, setFormData] = useState<CreateStaffPayload>(EMPTY_FORM);
   const [isAdding, setIsAdding] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [filterRole, setFilterRole] = useState("All");
+  const [isFetching, setIsFetching] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
-  // Form State
-  const [formData, setFormData] = useState({ name: "", email: "", phone: "", role: "Principal" });
+  const activeCount = useMemo(
+    () => staff.filter((member) => member.is_active).length,
+    [staff]
+  );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => {
-      setStaffList([
-        { id: Date.now(), ...formData, school: "Unassigned" },
-        ...staffList
-      ]);
-      setFormData({ name: "", email: "", phone: "", role: "Principal" });
+  const fetchStaff = useCallback(async () => {
+    setIsFetching(true);
+    setError("");
+    try {
+      const data = await getStaffList();
+      setStaff(data);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to load staff."));
+    } finally {
+      setIsFetching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStaff();
+  }, [fetchStaff]);
+
+  const handleInputChange =
+    (field: keyof CreateStaffPayload) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const value =
+        field === "is_active"
+          ? event.target.value === "true"
+          : event.target.value;
+
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      await createStaff(formData);
+      setSuccessMsg("Staff member created successfully.");
+      setFormData(EMPTY_FORM);
       setIsAdding(false);
-      setIsLoading(false);
-    }, 1000);
+      await fetchStaff();
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to create staff."));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const filteredStaff = staffList.filter((staff) => filterRole === "All" || staff.role === filterRole);
+  const categoryLabel = (category: StaffCategory) =>
+    STAFF_CATEGORIES.find((item) => item.value === category)?.label ?? category;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Manage Staff</h2>
-          <p className="text-sm text-gray-500 mt-1">Register all staff members and assign their roles centrally.</p>
+      <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr]">
+        <div className="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-600 via-cyan-600 to-emerald-500 p-6 text-white shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-white/80">Trustee Staff Directory</p>
+              <h2 className="text-3xl font-bold tracking-tight">Manage staff records</h2>
+              <p className="max-w-xl text-sm text-white/80">
+                Review all staff entries and create new records directly from the trustee panel.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/15 p-3">
+              <Users className="h-6 w-6" />
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              onClick={() => {
+                setIsAdding((prev) => !prev);
+                setError("");
+                setSuccessMsg("");
+              }}
+              className="bg-white text-teal-700 hover:bg-teal-50"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              {isAdding ? "Close Form" : "Add Staff"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={fetchStaff}
+              disabled={isFetching}
+              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setIsAdding(!isAdding)} className="bg-[#4F46E5] hover:bg-[#4338CA] text-white">
-          <Plus className="h-4 w-4 mr-2" />
-          {isAdding ? "Cancel Registration" : "Register Staff"}
-        </Button>
+
+        <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-gray-500">Total Staff</p>
+          <p className="mt-3 text-3xl font-bold text-gray-900">{staff.length}</p>
+          <p className="mt-1 text-sm text-gray-500">All records returned by `/api/StaffView/`.</p>
+        </div>
+
+        <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-gray-500">Active Staff</p>
+          <p className="mt-3 text-3xl font-bold text-gray-900">{activeCount}</p>
+          <p className="mt-1 text-sm text-gray-500">Members currently marked active.</p>
+        </div>
       </div>
 
-      {isAdding && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
-        >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Staff Registration Form</h3>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input 
-                  id="name" 
-                  required 
-                  className="pl-9" 
-                  placeholder="e.g. John Doe"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input 
-                  id="email" 
-                  type="email" 
-                  required 
-                  className="pl-9" 
-                  placeholder="staff@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone No</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input 
-                  id="phone" 
-                  required 
-                  className="pl-9" 
-                  placeholder="+91 0000000000"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <select 
-                id="role"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value})}
-              >
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-            <div className="lg:col-span-4 flex justify-end pt-2 border-t border-gray-100">
-              <Button type="submit" disabled={isLoading} className="bg-[#4F46E5] hover:bg-[#4338CA] text-white">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Register Member
-              </Button>
-            </div>
-          </form>
-        </motion.div>
-      )}
-
-      {/* Staff Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-        {/* Toolbar */}
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-            <Filter className="h-4 w-4" /> Filter by Role:
-          </div>
-          <select 
-            className="h-9 rounded-md border border-gray-200 bg-white px-3 py-1 text-sm outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] transition-all"
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
+      <AnimatePresence>
+        {successMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
           >
-            <option value="All">All Roles</option>
-            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+            {successMsg}
+          </motion.div>
+        )}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          >
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm"
+          >
+            <div className="mb-5">
+              <h3 className="text-xl font-semibold text-gray-900">Create staff record</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                This form posts directly to `/api/StaffView/`.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" value={formData.name} onChange={handleInputChange("name")} required />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={formData.email} onChange={handleInputChange("email")} required />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone_number">Phone Number</Label>
+                <Input
+                  id="phone_number"
+                  value={formData.phone_number}
+                  onChange={handleInputChange("phone_number")}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <select
+                  id="category"
+                  value={formData.category}
+                  onChange={handleInputChange("category")}
+                  className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none"
+                >
+                  {STAFF_CATEGORIES.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address">Address</Label>
+                <Input id="address" value={formData.address} onChange={handleInputChange("address")} required />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="date_of_birth">Date of Birth</Label>
+                <Input
+                  id="date_of_birth"
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={handleInputChange("date_of_birth")}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="salary">Salary</Label>
+                <Input
+                  id="salary"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.salary}
+                  onChange={handleInputChange("salary")}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="is_active">Status</Label>
+                <select
+                  id="is_active"
+                  value={String(formData.is_active)}
+                  onChange={handleInputChange("is_active")}
+                  className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none"
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2 flex justify-end">
+                <Button type="submit" disabled={isSubmitting} className="bg-teal-600 hover:bg-teal-700">
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                  {isSubmitting ? "Saving..." : "Create Staff"}
+                </Button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="rounded-3xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="border-b border-gray-100 px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900">Staff list</h3>
+          <p className="text-sm text-gray-500">Live data from the staff API.</p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-white text-gray-500 font-medium border-b border-gray-100">
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Email</th>
-                <th className="px-6 py-4">Phone</th>
-                <th className="px-6 py-4">School</th>
-                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Staff</th>
+                <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4">Contact</th>
+                <th className="px-6 py-4">Address</th>
+                <th className="px-6 py-4">DOB</th>
+                <th className="px-6 py-4">Joined</th>
+                <th className="px-6 py-4">Salary</th>
+                <th className="px-6 py-4">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100/50">
-              {filteredStaff.map((staff) => (
-                <tr key={staff.id} className="hover:bg-gray-50/30 transition-colors">
-                  <td className="px-6 py-4 font-medium text-gray-900">{staff.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{staff.email}</td>
-                  <td className="px-6 py-4 text-gray-600">{staff.phone}</td>
-                  <td className="px-6 py-4 text-gray-600">{staff.school}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
-                      ${staff.role === 'Principal' ? 'bg-purple-100 text-purple-800' : ''}
-                      ${staff.role === 'Teacher' ? 'bg-blue-100 text-blue-800' : ''}
-                      ${staff.role === 'Admin' ? 'bg-amber-100 text-amber-800' : ''}
-                      ${staff.role === 'Support' ? 'bg-emerald-100 text-emerald-800' : ''}
-                    `}>
-                      {staff.role}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {filteredStaff.length === 0 && (
+            <tbody className="divide-y divide-gray-100">
+              {isFetching ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                    No staff found for the selected role filter.
+                  <td colSpan={8} className="px-6 py-14 text-center">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-teal-600" />
+                    <p className="mt-2 text-sm text-gray-500">Loading staff...</p>
                   </td>
                 </tr>
+              ) : staff.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-14 text-center">
+                    <Users className="mx-auto h-8 w-8 text-gray-300" />
+                    <p className="mt-2 text-sm text-gray-500">No staff records found.</p>
+                  </td>
+                </tr>
+              ) : (
+                staff.map((member, index) => (
+                  <motion.tr
+                    key={member.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="align-top hover:bg-slate-50/70"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-gray-900">{member.name || "-"}</div>
+                      <div className="text-xs text-gray-500">ID #{member.id}</div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{categoryLabel(member.category)}</td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-1 text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3.5 w-3.5 text-gray-400" />
+                          <span>{member.email || "-"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5 text-gray-400" />
+                          <span>{member.phone_number || "-"}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="mt-0.5 h-3.5 w-3.5 text-gray-400" />
+                        <span>{member.address || "-"}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                        <span>{member.date_of_birth || "-"}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{member.joining_date || "-"}</td>
+                    <td className="px-6 py-4 text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <BadgeIndianRupee className="h-3.5 w-3.5 text-gray-400" />
+                        <span>{member.salary || "-"}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                          member.is_active
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-red-50 text-red-700"
+                        }`}
+                      >
+                        {member.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                  </motion.tr>
+                ))
               )}
             </tbody>
           </table>

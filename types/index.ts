@@ -56,3 +56,39 @@ export interface CreateSchoolResponse {
   meassage?: string;
   message?: string;
 }
+
+export type StaffCategory =
+  | "teaching"
+  | "non_teaching"
+  | "admin"
+  | "support"
+  | "account"
+  | "library"
+  | "other";
+
+export interface Staff {
+  id: number;
+  name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  category: StaffCategory;
+  address: string | null;
+  date_of_birth: string | null;
+  joining_date: string | null;
+  salary: string | null;
+  is_active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  user: number | null;
+}
+
+export interface CreateStaffPayload {
+  name: string;
+  email: string;
+  phone_number: string;
+  category: StaffCategory;
+  address: string;
+  date_of_birth: string;
+  salary: string;
+  is_active: boolean;
+}

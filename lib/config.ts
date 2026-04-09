@@ -5,4 +5,5 @@ export const API_ENDPOINTS = {
     LOGIN: "/access/",
     REFRESH: "/refresh/",
     SCHOOL: "/SchoolView/",
+    STAFF: "/StaffView/",
 }
