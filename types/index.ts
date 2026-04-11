@@ -58,13 +58,13 @@ export interface CreateSchoolResponse {
 }
 
 export type StaffCategory =
-  | "teaching"
-  | "non_teaching"
-  | "admin"
-  | "support"
-  | "account"
-  | "library"
-  | "other";
+  | "TEACHER"
+  | "CLERK"
+  | "LIBRARIAN"
+  | "FEE MANAGEMENT"
+  | "PRINCIPAL"
+  | "TRANSOPORTATION"
+  | "INVENTORY";
 
 export interface Staff {
   id: number;

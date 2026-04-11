@@ -6,4 +6,9 @@ export const API_ENDPOINTS = {
     REFRESH: "/refresh/",
     SCHOOL: "/SchoolView/",
     STAFF: "/StaffView/",
+    FORMS: "/forms/",
+    FIELDS: "/fields/",
+    CLASSES: "/getclass/",
+    FORM_STATUS: "/formstatus/",
+    FORM_LINK: "/admission/form/link/",
 }

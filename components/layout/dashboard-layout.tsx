@@ -37,6 +37,26 @@ const roleConfig: Record<string, { gradient: string; badge: string; badgeText: s
     badge: "bg-blue-500",
     badgeText: "PR",
   },
+  Clerk: {
+    gradient: "from-[#0F766E] via-[#0D9488] to-[#14B8A6]",
+    badge: "bg-teal-500",
+    badgeText: "CL",
+  },
+  Fees: {
+    gradient: "from-[#B45309] via-[#D97706] to-[#F59E0B]",
+    badge: "bg-amber-500",
+    badgeText: "FE",
+  },
+  Librarian: {
+    gradient: "from-[#166534] via-[#15803D] to-[#22C55E]",
+    badge: "bg-green-500",
+    badgeText: "LB",
+  },
+  Inventory: {
+    gradient: "from-[#1D4ED8] via-[#2563EB] to-[#06B6D4]",
+    badge: "bg-cyan-500",
+    badgeText: "IN",
+  },
 };
 
 function SidebarContent({

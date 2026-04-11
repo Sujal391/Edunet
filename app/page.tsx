@@ -1,5 +1,8 @@
-// app/page.tsx
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,9 +27,32 @@ import {
   Rocket,
   DollarSign,
   BookMarked,
+  X,
+  Loader2,
 } from "lucide-react";
+import { getPublishedFormLink } from "@/lib/forms";
+import { toast } from "sonner";
 
 export default function LandingPage() {
+  const [isLoadingLink, setIsLoadingLink] = useState(false);
+
+  const handleGetStarted = async () => {
+    setIsLoadingLink(true);
+    try {
+      const { form_link } = await getPublishedFormLink();
+      if (form_link) {
+        window.open(form_link, "_blank");
+      } else {
+        toast.error("Admissions are currently closed. Please check back later.");
+      }
+    } catch (error) {
+      console.error("Failed to fetch form link:", error);
+      toast.error("Something went wrong. Please try again later.");
+    } finally {
+      setIsLoadingLink(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8FAFC] via-white to-[#EEF2FF]">
 
@@ -72,12 +98,12 @@ export default function LandingPage() {
               <Button 
                 size="sm" 
                 className="rounded-lg bg-[#4F46E5] text-white shadow-md hover:bg-[#3730A3] transition-all duration-300" 
-                asChild
+                onClick={handleGetStarted}
+                disabled={isLoadingLink}
               >
-                <Link href="/login">
-                  Get Started
-                  <ArrowRight className="ml-2 h-3 w-3" />
-                </Link>
+                {isLoadingLink ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
+                Get Started
+                {!isLoadingLink && <ArrowRight className="ml-2 h-3 w-3" />}
               </Button>
               <Button variant="outline" size="icon" className="md:hidden rounded-lg border-[#34D399]/30 text-[#4F46E5]">
                 <Menu className="h-4 w-4" />
@@ -126,12 +152,12 @@ export default function LandingPage() {
                 <Button 
                   size="lg" 
                   className="rounded-lg bg-[#4F46E5] text-white shadow-md hover:bg-[#3730A3] transition-all duration-300 transform hover:scale-105"
-                  asChild
+                  onClick={handleGetStarted}
+                  disabled={isLoadingLink}
                 >
-                  <Link href="/login">
-                    Start Free Trial
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                  {isLoadingLink ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Start Free Trial
+                  {!isLoadingLink && <ArrowRight className="ml-2 h-4 w-4" />}
                 </Button>
                 <Button 
                   size="lg" 
@@ -451,12 +477,12 @@ export default function LandingPage() {
                   <Button 
                     size="lg" 
                     className="rounded-lg bg-[#4F46E5] text-white shadow-md hover:bg-[#3730A3] transition-all duration-300 transform hover:scale-105" 
-                    asChild
+                    onClick={handleGetStarted}
+                    disabled={isLoadingLink}
                   >
-                    <Link href="/login">
-                      Start Free Trial
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
+                    {isLoadingLink ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Start Free Trial
+                    {!isLoadingLink && <ArrowRight className="ml-2 h-4 w-4" />}
                   </Button>
                   <Button 
                     size="lg" 
@@ -539,6 +565,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
     </div>
   );
 }

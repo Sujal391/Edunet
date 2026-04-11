@@ -20,20 +20,20 @@ import { createStaff, getStaffList } from "@/lib/staff";
 import { CreateStaffPayload, Staff, StaffCategory } from "@/types";
 
 const STAFF_CATEGORIES: { label: string; value: StaffCategory }[] = [
-  { label: "Teaching", value: "teaching" },
-  { label: "Non Teaching", value: "non_teaching" },
-  { label: "Admin", value: "admin" },
-  { label: "Support", value: "support" },
-  { label: "Account", value: "account" },
-  { label: "Library", value: "library" },
-  { label: "Other", value: "other" },
+  { label: "Teacher", value: "TEACHER" },
+  { label: "Clerk", value: "CLERK" },
+  { label: "Librarian", value: "LIBRARIAN" },
+  { label: "Fee Management", value: "FEE MANAGEMENT" },
+  { label: "Principal", value: "PRINCIPAL" },
+  { label: "Transportation", value: "TRANSOPORTATION" },
+  { label: "INVENTORY", value: "INVENTORY" },
 ];
 
 const EMPTY_FORM: CreateStaffPayload = {
   name: "",
   email: "",
   phone_number: "",
-  category: "teaching",
+  category: "TEACHER",
   address: "",
   date_of_birth: "",
   salary: "",
@@ -81,17 +81,17 @@ export default function TrusteeDashboard() {
 
   const handleInputChange =
     (field: keyof CreateStaffPayload) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value =
-        field === "is_active"
-          ? event.target.value === "true"
-          : event.target.value;
+      (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const value =
+          field === "is_active"
+            ? event.target.value === "true"
+            : event.target.value;
 
-      setFormData((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
-    };
+        setFormData((prev) => ({
+          ...prev,
+          [field]: value,
+        }));
+      };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -158,7 +158,7 @@ export default function TrusteeDashboard() {
         <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
           <p className="text-sm font-medium text-gray-500">Total Staff</p>
           <p className="mt-3 text-3xl font-bold text-gray-900">{staff.length}</p>
-          <p className="mt-1 text-sm text-gray-500">All records returned by `/api/StaffView/`.</p>
+          <p className="mt-1 text-sm text-gray-500">Total staff members.</p>
         </div>
 
         <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -201,20 +201,17 @@ export default function TrusteeDashboard() {
           >
             <div className="mb-5">
               <h3 className="text-xl font-semibold text-gray-900">Create staff record</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                This form posts directly to `/api/StaffView/`.
-              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" value={formData.name} onChange={handleInputChange("name")} required />
+                <Input id="name" value={formData.name} placeholder="Staff name" onChange={handleInputChange("name")} required />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={formData.email} onChange={handleInputChange("email")} required />
+                <Input id="email" type="email" value={formData.email} placeholder="Staff email" onChange={handleInputChange("email")} required />
               </div>
 
               <div className="space-y-2">
@@ -222,6 +219,7 @@ export default function TrusteeDashboard() {
                 <Input
                   id="phone_number"
                   value={formData.phone_number}
+                  placeholder="Staff phone number"
                   onChange={handleInputChange("phone_number")}
                   required
                 />
@@ -378,11 +376,10 @@ export default function TrusteeDashboard() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                          member.is_active
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-red-50 text-red-700"
-                        }`}
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${member.is_active
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-red-50 text-red-700"
+                          }`}
                       >
                         {member.is_active ? "Active" : "Inactive"}
                       </span>

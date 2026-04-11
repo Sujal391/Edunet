@@ -7,6 +7,11 @@ const COOKIE_FETCH_OPTIONS: Pick<RequestInit, "credentials"> = {
   credentials: "include",
 };
 
+const ACCESS_TOKEN_COOKIE = "access_token";
+const REFRESH_TOKEN_COOKIE = "refresh_token";
+const COOKIE_PATH = "path=/";
+const COOKIE_SAME_SITE = "SameSite=Lax";
+
 function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   return fetch(input, {
     ...COOKIE_FETCH_OPTIONS,
@@ -14,63 +19,112 @@ function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   });
 }
 
-function getAccessToken(): string | null {
-  if (typeof window !== "undefined") {
-    const directToken = localStorage.getItem("access_token");
-    if (directToken) return directToken;
-    const plainToken = localStorage.getItem("token");
-    if (plainToken) return plainToken;
-    const altToken = localStorage.getItem("authToken");
-    if (altToken) return altToken;
-
-    // Fallback for persisted stores that keep auth under { state: { token } }.
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-
-      try {
-        const parsed = JSON.parse(raw) as { state?: { token?: unknown }; token?: unknown };
-        const nestedToken = parsed?.state?.token;
-        if (typeof nestedToken === "string" && nestedToken.length > 0) {
-          return nestedToken;
-        }
-
-        const flatToken = parsed?.token;
-        if (typeof flatToken === "string" && flatToken.length > 0) {
-          return flatToken;
-        }
-      } catch {
-        // Ignore non-JSON values in localStorage.
-      }
-    }
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") {
+    return null;
   }
-  return null;
+
+  const cookie = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${name}=`));
+
+  if (!cookie) {
+    return null;
+  }
+
+  const value = cookie.slice(name.length + 1);
+  return value ? decodeURIComponent(value) : null;
+}
+
+function getSecureCookieFlag(): string {
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    return "; Secure";
+  }
+
+  return "";
+}
+
+function getTokenMaxAge(token?: string | null): number | null {
+  if (!token || typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) {
+      return null;
+    }
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const decoded = window.atob(padded);
+    const parsed = JSON.parse(decoded) as { exp?: unknown };
+
+    if (typeof parsed.exp !== "number") {
+      return null;
+    }
+
+    const ttl = parsed.exp - Math.floor(Date.now() / 1000);
+    return ttl > 0 ? ttl : 0;
+  } catch {
+    return null;
+  }
+}
+
+function setCookie(name: string, value: string, maxAge?: number | null) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const maxAgePart =
+    typeof maxAge === "number" && Number.isFinite(maxAge)
+      ? `; Max-Age=${Math.max(0, Math.floor(maxAge))}`
+      : "";
+
+  document.cookie = `${name}=${encodeURIComponent(value)}; ${COOKIE_PATH}; ${COOKIE_SAME_SITE}${maxAgePart}${getSecureCookieFlag()}`;
+}
+
+function removeCookie(name: string) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.cookie = `${name}=; ${COOKIE_PATH}; ${COOKIE_SAME_SITE}; Max-Age=0${getSecureCookieFlag()}`;
+}
+
+function clearLegacyLocalTokens() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("token");
+  localStorage.removeItem("authToken");
+}
+
+function getAccessToken(): string | null {
+  return getCookie(ACCESS_TOKEN_COOKIE);
 }
 
 function getRefreshToken(): string | null {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("refresh_token");
-  }
-  return null;
+  return getCookie(REFRESH_TOKEN_COOKIE);
 }
 
 function setTokens(access: string, refresh?: string | null) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("access_token", access);
-    if (typeof refresh === "string" && refresh.length > 0) {
-      localStorage.setItem("refresh_token", refresh);
-    }
+  clearLegacyLocalTokens();
+
+  setCookie(ACCESS_TOKEN_COOKIE, access, getTokenMaxAge(access));
+
+  if (typeof refresh === "string" && refresh.length > 0) {
+    setCookie(REFRESH_TOKEN_COOKIE, refresh, getTokenMaxAge(refresh));
   }
 }
 
 function clearTokens() {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-  }
+  clearLegacyLocalTokens();
+  removeCookie(ACCESS_TOKEN_COOKIE);
+  removeCookie(REFRESH_TOKEN_COOKIE);
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
@@ -124,15 +178,15 @@ export async function refreshToken(): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body: requestBody,
     });
-    
+
     if (response.ok) {
-        const data = await response.json();
-        const newAccess = data.access || data.token;
-        const newRefresh = data.refresh || refresh;
-        if (newAccess) {
-            setTokens(newAccess, newRefresh);
-            return true;
-        }
+      const data = await response.json();
+      const newAccess = data.access || data.token;
+      const newRefresh = data.refresh || refresh;
+      if (newAccess) {
+        setTokens(newAccess, newRefresh);
+        return true;
+      }
     }
     return false;
   } catch {
@@ -163,11 +217,11 @@ export async function fetchWithAuth(
 
   if (isRefreshing) {
     await new Promise<boolean>((resolve) => refreshSubscribers.push(resolve));
-    
+
     const newToken = getAccessToken();
     const newHeaders = new Headers(init.headers);
     if (newToken) {
-        newHeaders.set("Authorization", `Bearer ${newToken}`);
+      newHeaders.set("Authorization", `Bearer ${newToken}`);
     }
     return apiFetch(url, {
       ...init,
@@ -224,7 +278,7 @@ export async function logoutUser(): Promise<void> {
 export function getDashboardRoute(roles: string[]): string {
   const role = roles?.[0]?.toLowerCase() ?? "";
   if (role === "super_admin") return "/superadmin";
-  if (role === "trustee") return "/trustee";
+  if (role === "admin(trustee)") return "/trustee";
   if (role === "principal") return "/principal";
   if (role === "librarian") return "/librarian";
   if (role === "clerk" || role === "fees_clerk") return "/clerk";
