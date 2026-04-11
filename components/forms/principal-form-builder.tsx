@@ -152,7 +152,7 @@ function toPayloadFields(fields: ConfiguredField[]): AdmissionFormFieldPayload[]
       return {
         ...(isSelect && validOptions.length > 0 ? { options: validOptions } : {}),
         label: field.label.trim(),
-        field_type: field.type,
+        type: field.type,
         required: field.required,
         order: index + 1,
       }
