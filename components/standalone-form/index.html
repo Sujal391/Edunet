@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admission Form | Edunet</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div id="loading-screen" class="screen flex-center">
+        <div class="loader-container">
+            <div class="spinner"></div>
+            <p>Preparing admission form...</p>
+        </div>
+    </div>
+
+    <div id="form-container" class="container hidden">
+        <div class="card shadow-xl">
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+
+            <div class="card-header">
+                <div class="header-content">
+                    <div class="header-left">
+                        <span id="step-badge" class="badge">Step 1 of 3</span>
+                        <h1 id="form-title" class="title">Admission Form</h1>
+                        <p id="form-desc" class="description">Please provide your information</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-content">
+                <!-- Step 1: Personal Info -->
+                <div id="step-1" class="step-view">
+                    <div id="dynamic-sections" class="sections-grid">
+                        <!-- Sections injected here -->
+                    </div>
+                </div>
+
+                <!-- Step 2: Documents -->
+                <div id="step-2" class="step-view hidden">
+                    <div class="section-title-container">
+                        <div class="accent-bar bar-indigo"></div>
+                        <h3>Document & ID Requirements</h3>
+                    </div>
+                    <div id="dynamic-documents" class="documents-list">
+                        <!-- Docs injected here -->
+                    </div>
+                </div>
+
+                <!-- Step 3: Review -->
+                <div id="step-3" class="step-view hidden">
+                    <div class="section-title-container">
+                        <div class="accent-bar bar-emerald"></div>
+                        <h3>Review Your Details</h3>
+                    </div>
+                    <div id="review-content" class="review-grid">
+                        <!-- Review injected here -->
+                    </div>
+                </div>
+
+                <!-- Success Screen -->
+                <div id="step-success" class="step-view hidden flex-center py-12">
+                    <div class="success-animation">
+                        <div class="success-circle">
+                            <i data-lucide="check" class="icon-success"></i>
+                        </div>
+                    </div>
+                    <h2 class="success-title">Application Submitted!</h2>
+                    <p id="success-message" class="success-message">Your application has been received.</p>
+                    <button class="btn btn-success btn-lg mt-8" onclick="location.reload()">Done</button>
+                </div>
+            </div>
+
+            <div id="form-footer" class="card-footer">
+                <button id="prev-btn" class="btn btn-outline" onclick="prevStep()" disabled>
+                    <i data-lucide="chevron-left"></i> Previous
+                </button>
+                <div class="footer-right">
+                    <button id="next-btn" class="btn btn-primary" onclick="nextStep()">
+                        Continue <i data-lucide="chevron-right"></i>
+                    </button>
+                    <button id="submit-btn" class="btn btn-primary btn-submit hidden" onclick="submitForm()">
+                        Submit Application <i data-lucide="send"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-screen" class="screen flex-center hidden">
+        <div class="error-container">
+            <i data-lucide="alert-circle" class="icon-error"></i>
+            <h2>Oops! Something went wrong</h2>
+            <p id="error-message">Could not load the admission form.</p>
+            <button class="btn btn-outline mt-4" onclick="location.reload()">Try Again</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Init Lucide
+        lucide.createIcons();
+    </script>
+</body>
+</html>

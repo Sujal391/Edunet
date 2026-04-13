@@ -1,11 +1,12 @@
 "use client";
 import React from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { FileText, LayoutDashboard } from "lucide-react";
+import { FileText, LayoutDashboard, School } from "lucide-react";
 
 const sidebarLinks = [
   { title: "Dashboard", href: "/principal", icon: LayoutDashboard },
   { title: "Admission Form", href: "/principal/admission-form", icon: FileText },
+  { title: "Classes", href: "/principal/classes", icon: School },
 ];
 
 export default function PrincipalLayout({ children }: { children: React.ReactNode }) {

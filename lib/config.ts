@@ -11,4 +11,8 @@ export const API_ENDPOINTS = {
     CLASSES: "/getclass/",
     FORM_STATUS: "/formstatus/",
     FORM_LINK: "/admission/form/link/",
+    SCHOOL_CLASS: "/schoolclass/",
+    DIVISION_SET: "/divisionSet/",
+    SET_SUBJECT: "/setSubject/",
+    SYLLABUS: "/syllabus/",
 }

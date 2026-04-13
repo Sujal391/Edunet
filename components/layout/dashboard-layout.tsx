@@ -124,7 +124,14 @@ function SidebarContent({
         {sidebarLinks.map((link, i) => {
           const isActive =
             pathname === link.href ||
-            (pathname.startsWith(`${link.href}/`) && link.href !== "/");
+            (pathname.startsWith(`${link.href}/`) &&
+              link.href !== "/" &&
+              !sidebarLinks.some(
+                (other) =>
+                  other.href !== link.href &&
+                  pathname.startsWith(other.href) &&
+                  other.href.length > link.href.length
+              ));
           return (
             <motion.div
               key={link.href}
@@ -197,7 +204,14 @@ export function DashboardLayout({
     sidebarLinks.find(
       (l) =>
         pathname === l.href ||
-        (pathname.startsWith(`${l.href}/`) && l.href !== "/")
+        (pathname.startsWith(`${l.href}/`) &&
+          l.href !== "/" &&
+          !sidebarLinks.some(
+            (other) =>
+              other.href !== l.href &&
+              pathname.startsWith(other.href) &&
+              other.href.length > l.href.length
+          ))
     )?.title || roleTitle;
 
   return (

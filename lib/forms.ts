@@ -23,8 +23,8 @@ export async function getAdmissionForms(): Promise<AdmissionFormResponse[]> {
   }
 
   const data = await response.json()
-  // Handle both paginated { results: [...] } and plain array responses
-  return Array.isArray(data) ? data : (data.results ?? [])
+  // Handle both paginated { results: [...] }, wrapped { data: [...] }, and plain array responses
+  return Array.isArray(data) ? data : (data.data ?? data.results ?? [])
 }
 
 export async function createAdmissionForm(
@@ -69,16 +69,17 @@ export async function getPublicFormFields(): Promise<PublicAdmissionForm[]> {
   }
 
   const data = await response.json()
-  return Array.isArray(data) ? data : (data.results ?? [])
+  return Array.isArray(data) ? data : (data.data ?? data.results ?? [])
 }
 
 export interface SchoolClass {
+  id: number
   school_class: string
 }
 
 export async function getSchoolClasses(): Promise<SchoolClass[]> {
-  const url = `${API_BASE_URL}${API_ENDPOINTS.CLASSES}`
-  const response = await fetch(url)
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SCHOOL_CLASS}`
+  const response = await fetchWithAuth(url)
 
   if (!response.ok) {
     let message = "Failed to fetch classes."
@@ -92,14 +93,25 @@ export async function getSchoolClasses(): Promise<SchoolClass[]> {
   }
 
   const data = await response.json()
-  const rawClasses = Array.isArray(data) ? data : (data.results ?? [])
-  
-  // Deduplicate by school_class name
-  const uniqueClasses = Array.from(
-    new Map(rawClasses.map((item: any) => [item.school_class, item])).values()
-  ) as SchoolClass[]
+  return Array.isArray(data) ? data : (data.data ?? data.results ?? [])
+}
 
-  return uniqueClasses
+export async function deleteSchoolClass(id: number): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SCHOOL_CLASS}${id}/`
+  const response = await fetchWithAuth(url, {
+    method: "DELETE",
+  })
+
+  if (!response.ok) {
+    let message = "Failed to delete class."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
 }
 
 export async function toggleFormStatus(formId: number): Promise<void> {
@@ -137,4 +149,223 @@ export async function getPublishedFormLink(): Promise<{ form_link: string }> {
   }
 
   return response.json()
+}
+
+export async function saveSchoolClasses(classes: string[]): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SCHOOL_CLASS}`
+  const payload = classes.map((c) => ({ school_class: c }))
+  const response = await fetchWithAuth(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    let message = "Failed to save classes."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+}
+
+export interface Division {
+  id?: number
+  SchoolClass: number | null
+  division: string
+  capacity: number | null
+}
+
+export async function getDivisions(): Promise<Division[]> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.DIVISION_SET}`
+  const response = await fetchWithAuth(url)
+
+  if (!response.ok) {
+    let message = "Failed to fetch divisions."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return Array.isArray(data) ? data : (data.data ?? data.results ?? [])
+}
+
+export async function saveDivision(payload: Division): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.DIVISION_SET}`
+  const response = await fetchWithAuth(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    let message = "Failed to save division."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+}
+
+export async function deleteDivision(id: number): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.DIVISION_SET}${id}/`
+  const response = await fetchWithAuth(url, {
+    method: "DELETE",
+  })
+
+  if (!response.ok) {
+    let message = "Failed to delete division."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+}
+
+export interface Subject {
+  id?: number
+  name: string
+  division: number | null
+}
+
+export async function getSubjects(): Promise<Subject[]> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SET_SUBJECT}`
+  const response = await fetchWithAuth(url)
+
+  if (!response.ok) {
+    let message = "Failed to fetch subjects."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return Array.isArray(data) ? data : (data.data ?? data.results ?? [])
+}
+
+export async function saveSubject(payload: Subject): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SET_SUBJECT}`
+  const response = await fetchWithAuth(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    let message = "Failed to save subject."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+}
+
+export async function deleteSubject(id: number): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SET_SUBJECT}${id}/`
+  const response = await fetchWithAuth(url, {
+    method: "DELETE",
+  })
+
+  if (!response.ok) {
+    let message = "Failed to delete subject."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+}
+
+export interface Syllabus {
+  id?: number
+  syllabus_file: string | File | null
+  division: number | null
+  subject: number | null
+}
+
+export async function getSyllabusList(): Promise<Syllabus[]> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SYLLABUS}`
+  const response = await fetchWithAuth(url)
+
+  if (!response.ok) {
+    let message = "Failed to fetch syllabus."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return Array.isArray(data) ? data : (data.data ?? data.results ?? [])
+}
+
+export async function saveSyllabus(payload: Syllabus): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SYLLABUS}`
+  
+  const formData = new FormData()
+  if (payload.syllabus_file instanceof File) {
+    formData.append("syllabus_file", payload.syllabus_file)
+  }
+  if (payload.division) formData.append("division", payload.division.toString())
+  if (payload.subject) formData.append("subject", payload.subject.toString())
+
+  const response = await fetchWithAuth(url, {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    let message = "Failed to save syllabus."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+}
+
+export async function deleteSyllabus(id: number): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SYLLABUS}${id}/`
+  const response = await fetchWithAuth(url, {
+    method: "DELETE",
+  })
+
+  if (!response.ok) {
+    let message = "Failed to delete syllabus."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
 }

@@ -216,3 +216,25 @@ export function createConfiguredField(
     selected: Boolean(template.required),
   }
 }
+
+export const SCHOOL_CLASS_OPTIONS = [
+  { label: "Nursery", value: "nursery" },
+  { label: "LKG", value: "lkg" },
+  { label: "UKG", value: "ukg" },
+  { label: "Class 1", value: "class1" },
+  { label: "Class 2", value: "class2" },
+  { label: "Class 3", value: "class3" },
+  { label: "Class 4", value: "class4" },
+  { label: "Class 5", value: "class5" },
+  { label: "Class 6", value: "class6" },
+  { label: "Class 7", value: "class7" },
+  { label: "Class 8", value: "class8" },
+  { label: "Class 9", value: "class9" },
+  { label: "Class 10", value: "class10" },
+  { label: "Class 11 Science", value: "class11_science" },
+  { label: "Class 11 Arts", value: "class11_arts" },
+  { label: "Class 11 Commerce", value: "class11_commerce" },
+  { label: "Class 12 Science", value: "class12_science" },
+  { label: "Class 12 Arts", value: "class12_arts" },
+  { label: "Class 12 Commerce", value: "class12_commerce" },
+]
