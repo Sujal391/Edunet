@@ -84,7 +84,7 @@ export default function AssignTeacherPage() {
   // Derived: Unique Class Names and IDs from Divisions
   const classes = Array.from(
     divisions.reduce((acc, current) => {
-      if (current.SchoolClass && !acc.has(current.SchoolClass)) {
+      if (current.SchoolClass && current.class_name && !acc.has(current.SchoolClass)) {
         acc.set(current.SchoolClass, current.class_name)
       }
       return acc

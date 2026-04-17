@@ -185,7 +185,7 @@ export async function saveSchoolClasses(classes: string[]): Promise<void> {
 export interface Division {
   id?: number
   SchoolClass: number | null
-  class_name: string
+  class_name?: string
   division: string
   capacity: number | null
 }

@@ -251,7 +251,7 @@ export default function SyllabusPage() {
                   <Select
                     value={selectedDivisionId}
                     onValueChange={(val) => {
-                      setSelectedDivisionId(val)
+                      setSelectedDivisionId(val || "")
                       setSelectedSubjectId("") // Reset subject when division changes
                     }}
                     disabled={isLoading || divisions.length === 0}
@@ -275,7 +275,7 @@ export default function SyllabusPage() {
                   <label className="text-sm font-medium text-slate-700">Subject</label>
                   <Select
                     value={selectedSubjectId}
-                    onValueChange={setSelectedSubjectId}
+                    onValueChange={(val) => setSelectedSubjectId(val || "")}
                     disabled={isLoading || !selectedDivisionId || relevantSubjects.length === 0}
                   >
                     <SelectTrigger className="w-full bg-slate-50 border-slate-200">
