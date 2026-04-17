@@ -1,6 +1,5 @@
 export type BuilderFieldType =
   | "text"
-  | "textarea"
   | "email"
   | "date"
   | "select"
@@ -35,8 +34,9 @@ export interface ConfiguredField {
 
 export interface AdmissionFormFieldPayload {
   key?: string
+  type?: string
   label: string
-  type: BuilderFieldType
+  field_type: BuilderFieldType
   required: boolean
   options?: BuilderOption[]
   order: number
@@ -64,7 +64,7 @@ export interface AdmissionFormCreatePayload {
 export interface AdmissionFormResponse extends AdmissionFormCreatePayload {
   id: number
   unique_link: string
-  is_published: boolean
+  is_active: boolean
 }
 
 export interface PublicField {
@@ -102,7 +102,6 @@ export interface PublicAdmissionForm {
 
 export const FIELD_TYPE_OPTIONS: BuilderOption[] = [
   { label: "Text", value: "text" },
-  { label: "Textarea", value: "textarea" },
   { label: "Email", value: "email" },
   { label: "Date", value: "date" },
   { label: "Select", value: "select" },
@@ -141,7 +140,7 @@ export const PERSONAL_FIELD_TEMPLATES: FieldTemplate[] = [
   { key: "mobile_number", label: "Mobile Number", type: "text", required: true },
   { key: "alternate_mobile_number", label: "Alternate Mobile Number", type: "text" },
   { key: "email_address", label: "Email Address", type: "email" },
-  { key: "address_line", label: "Address Line", type: "textarea", required: true },
+  { key: "address_line", label: "Address Line", type: "text", required: true },
   { key: "city_village", label: "City/Village", type: "text", required: true },
   { key: "district", label: "District", type: "text", required: true },
   { key: "state", label: "State", type: "text", required: true },

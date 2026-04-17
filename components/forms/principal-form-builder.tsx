@@ -41,6 +41,7 @@ import {
   DOCUMENT_FIELD_TEMPLATES,
   FIELD_TYPE_OPTIONS,
   PERSONAL_FIELD_TEMPLATES,
+  SCHOOL_CLASS_OPTIONS,
   type AdmissionFormCreatePayload,
   type AdmissionFormFieldPayload,
   type AdmissionFormResponse,
@@ -152,7 +153,7 @@ function toPayloadFields(fields: ConfiguredField[]): AdmissionFormFieldPayload[]
       return {
         ...(isSelect && validOptions.length > 0 ? { options: validOptions } : {}),
         label: field.label.trim(),
-        type: field.type,
+        field_type: field.type,
         required: field.required,
         order: index + 1,
       }
@@ -390,7 +391,9 @@ export default function PrincipalFormBuilder({
     DOCUMENT_FIELD_TEMPLATES.map((field, index) => cloneField(createConfiguredField(field), index))
   )
   const [feesEnabled, setFeesEnabled] = useState(false)
+  const [feeType, setFeeType] = useState<"general" | "individual">("general")
   const [feesAmount, setFeesAmount] = useState("")
+  const [individualFees, setIndividualFees] = useState<Record<number, string>>({})
   const [errors, setErrors] = useState<ErrorMap>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
@@ -402,12 +405,29 @@ export default function PrincipalFormBuilder({
       try {
         const data = await getSchoolClasses()
         if (data && data.length > 0) {
-          setClasses(data)
+          // Sort classes based on predefined order
+          const sortedData = [...data].sort((a, b) => {
+            const indexA = SCHOOL_CLASS_OPTIONS.findIndex(opt => opt.value === a.school_class)
+            const indexB = SCHOOL_CLASS_OPTIONS.findIndex(opt => opt.value === b.school_class)
+            // If not found, put at the end
+            if (indexA === -1) return 1
+            if (indexB === -1) return -1
+            return indexA - indexB
+          })
+
+          setClasses(sortedData)
+          
+          // Initialize individual fees
+          const initialFees: Record<number, string> = {}
+          sortedData.forEach(cls => {
+            initialFees[cls.id] = ""
+          })
+          setIndividualFees(initialFees)
           
           // Map to options format
-          const classOptions = data.map(cls => ({
-            label: cls.school_class,
-            value: cls.school_class // Using name as value for now
+          const classOptions = sortedData.map(cls => ({
+            label: cls.school_class.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
+            value: cls.school_class
           }))
 
           // Update initial personal fields if they contain the class selector
@@ -443,21 +463,28 @@ export default function PrincipalFormBuilder({
 
     return {
       fees_enable: feesEnabled,
-      fees: feesEnabled && feesNum > 0 ? feesNum : null,
+      fees: (feesEnabled && feeType === "general") ? (Number(feesAmount) || 0) : null,
       title: formTitle,
       description: description.trim() || `Admission form for academic year ${academicYear}`,
       unique_link: slugify(formTitle),
-      fee_type: "individual",
+      fee_type: feeType,
       sections,
       document_field,
-      fee_structures: feesEnabled && feesNum > 0 ? [{ class_name: 1, amount: feesNum }] : [],
+      fee_structures: (feesEnabled && feeType === "individual")
+        ? Object.entries(individualFees)
+            .filter(([_, amt]) => amt && Number(amt) > 0)
+            .map(([id, amt]) => ({ class_name: Number(id), amount: Number(amt) }))
+        : [],
     }
   }, [
     academicYear,
+    classes,
     description,
     documentFields,
+    feeType,
     feesAmount,
     feesEnabled,
+    individualFees,
     personalFields,
     personalSectionTitle,
     title,
@@ -475,8 +502,15 @@ export default function PrincipalFormBuilder({
       }
     }
 
-    if (step === 2 && feesEnabled && !feesAmount.trim()) {
-      nextErrors.fees = "Application fee amount is required"
+    if (step === 2 && feesEnabled) {
+      if (feeType === "general" && !feesAmount.trim()) {
+        nextErrors.fees = "Application fee amount is required"
+      } else if (feeType === "individual") {
+        const hasAnyFee = Object.values(individualFees).some(amt => amt && Number(amt) > 0)
+        if (!hasAnyFee) {
+          nextErrors.fees = "Please set at least one class fee"
+        }
+      }
     }
 
     setErrors(nextErrors)
@@ -844,18 +878,99 @@ export default function PrincipalFormBuilder({
                       </div>
 
                       {feesEnabled && (
-                        <div className="space-y-1.5">
-                          <Label htmlFor="fees-amount">Amount (INR)</Label>
-                          <Input
-                            id="fees-amount"
-                            type="number"
-                            min="0"
-                            value={feesAmount}
-                            onChange={(e) => setFeesAmount(e.target.value)}
-                            placeholder="500"
-                          />
-                          {errors.fees && (
-                            <p className="text-xs text-destructive">{errors.fees}</p>
+                        <div className="space-y-4 pt-2">
+                          <div className="flex bg-muted p-1 rounded-lg w-full max-w-[300px]">
+                            <button
+                              type="button"
+                              onClick={() => setFeeType("general")}
+                              className={cn(
+                                "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                                feeType === "general" 
+                                  ? "bg-white text-foreground shadow-sm" 
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              General Fee
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFeeType("individual")}
+                              className={cn(
+                                "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                                feeType === "individual" 
+                                  ? "bg-white text-foreground shadow-sm" 
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              Individual Fees
+                            </button>
+                          </div>
+
+                          {feeType === "general" ? (
+                            <div className="space-y-1.5">
+                              <Label htmlFor="fees-amount">Amount (INR)</Label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
+                                <Input
+                                  id="fees-amount"
+                                  type="number"
+                                  min="0"
+                                  value={feesAmount}
+                                  onChange={(e) => setFeesAmount(e.target.value)}
+                                  placeholder="500"
+                                  className="pl-7"
+                                />
+                              </div>
+                              <p className="text-[10px] text-muted-foreground italic">
+                                This amount will apply to all classes.
+                              </p>
+                              {errors.fees && (
+                                <p className="text-xs text-destructive">{errors.fees}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Class-wise Fees</Label>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-7 text-[10px] gap-1 px-2"
+                                  onClick={() => {
+                                    const firstAmt = Object.values(individualFees).find(v => v !== "") || "0";
+                                    const next = { ...individualFees };
+                                    classes.forEach(c => next[c.id] = firstAmt);
+                                    setIndividualFees(next);
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  Apply first to all
+                                </Button>
+                              </div>
+                              <ScrollArea className="h-[240px] rounded-md border bg-slate-50/50 p-3">
+                                <div className="space-y-2">
+                                  {classes.map((cls) => (
+                                    <div key={cls.id} className="flex items-center justify-between gap-4 bg-white p-2 rounded-lg border border-slate-200">
+                                      <span className="text-sm font-medium">{cls.school_class}</span>
+                                      <div className="relative w-32">
+                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">₹</span>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={individualFees[cls.id] || ""}
+                                          onChange={(e) => setIndividualFees(prev => ({
+                                            ...prev,
+                                            [cls.id]: e.target.value
+                                          }))}
+                                          className="h-8 pl-5 text-sm"
+                                          placeholder="0"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </ScrollArea>
+                            </div>
                           )}
                         </div>
                       )}

@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Phone, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { sendOtp } from "@/lib/auth";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -22,15 +24,35 @@ const fadeUp = {
 };
 
 export function SignupForm() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [identifier, setIdentifier] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 2000);
+    setError("");
+
+    try {
+      const isEmail = identifier.includes("@");
+      const payload = isEmail 
+        ? { email: identifier.trim() }
+        : { mobile: identifier.trim().replace(/\s+/g, "") };
+
+      await sendOtp(payload);
+      
+      const searchParams = new URLSearchParams();
+      searchParams.set("identifier", identifier.trim());
+      searchParams.set("type", isEmail ? "email" : "mobile");
+      
+      router.push(`/verify-otp?${searchParams.toString()}`);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -55,137 +77,49 @@ export function SignupForm() {
       </motion.div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Full Name */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Identifier (Email/Mobile) */}
         <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible" className="space-y-1.5">
-          <Label htmlFor="name" className="text-sm font-semibold text-[#374151]">
-            Full Name
+          <Label htmlFor="identifier" className="text-sm font-semibold text-[#374151]">
+            Email address or Mobile number
           </Label>
           <div className="relative">
-            <User
-              className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
-                focused === "name" ? "text-[#4F46E5]" : "text-[#94A3B8]"
-              }`}
-            />
+            {identifier.includes("@") || (identifier.length > 0 && !/^\d+$/.test(identifier[0])) ? (
+              <Mail
+                className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
+                  focused === "identifier" ? "text-[#4F46E5]" : "text-[#94A3B8]"
+                }`}
+              />
+            ) : (
+              <Phone
+                className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
+                  focused === "identifier" ? "text-[#4F46E5]" : "text-[#94A3B8]"
+                }`}
+              />
+            )}
             <Input
-              id="name"
+              id="identifier"
               type="text"
-              placeholder="John Doe"
+              placeholder="e.g. name@example.com or 9876543210"
               required
-              onFocus={() => setFocused("name")}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              onFocus={() => setFocused("identifier")}
               onBlur={() => setFocused(null)}
               className="pl-10 h-12 rounded-xl border-[#E2E8F0] bg-white text-[#0F172A] placeholder:text-[#CBD5E1] shadow-sm focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 transition-all duration-200"
             />
           </div>
         </motion.div>
 
-        {/* Email */}
-        <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible" className="space-y-1.5">
-          <Label htmlFor="email" className="text-sm font-semibold text-[#374151]">
-            Email address
-          </Label>
-          <div className="relative">
-            <Mail
-              className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
-                focused === "email" ? "text-[#4F46E5]" : "text-[#94A3B8]"
-              }`}
-            />
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@school.com"
-              required
-              onFocus={() => setFocused("email")}
-              onBlur={() => setFocused(null)}
-              className="pl-10 h-12 rounded-xl border-[#E2E8F0] bg-white text-[#0F172A] placeholder:text-[#CBD5E1] shadow-sm focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 transition-all duration-200"
-            />
-          </div>
-        </motion.div>
-
-        {/* Password */}
-        <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible" className="space-y-1.5">
-          <Label htmlFor="password" className="text-sm font-semibold text-[#374151]">
-            Password
-          </Label>
-          <div className="relative">
-            <Lock
-              className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
-                focused === "password" ? "text-[#4F46E5]" : "text-[#94A3B8]"
-              }`}
-            />
-            <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              required
-              onFocus={() => setFocused("password")}
-              onBlur={() => setFocused(null)}
-              className="pl-10 pr-11 h-12 rounded-xl border-[#E2E8F0] bg-white text-[#0F172A] placeholder:text-[#CBD5E1] shadow-sm focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 transition-all duration-200"
-            />
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#475569] transition-colors"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={showPassword ? "hide" : "show"}
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.7 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </motion.span>
-              </AnimatePresence>
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Confirm Password */}
-        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="space-y-1.5">
-          <Label htmlFor="confirm-password" className="text-sm font-semibold text-[#374151]">
-            Confirm Password
-          </Label>
-          <div className="relative">
-            <Lock
-              className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
-                focused === "confirm-password" ? "text-[#4F46E5]" : "text-[#94A3B8]"
-              }`}
-            />
-            <Input
-              id="confirm-password"
-              type={showConfirmPassword ? "text" : "password"}
-              placeholder="••••••••"
-              required
-              onFocus={() => setFocused("confirm-password")}
-              onBlur={() => setFocused(null)}
-              className="pl-10 pr-11 h-12 rounded-xl border-[#E2E8F0] bg-white text-[#0F172A] placeholder:text-[#CBD5E1] shadow-sm focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 transition-all duration-200"
-            />
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={() => setShowConfirmPassword((v) => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#475569] transition-colors"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={showConfirmPassword ? "hide" : "show"}
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.7 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </motion.span>
-              </AnimatePresence>
-            </button>
-          </div>
-        </motion.div>
+        {/* Error Message */}
+        {error && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+            <p className="text-sm font-medium text-red-500">{error}</p>
+          </motion.div>
+        )}
 
         {/* Submit */}
-        <motion.div custom={5} variants={fadeUp} initial="hidden" animate="visible" className="pt-1">
+        <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible" className="pt-2">
           <Button
             type="submit"
             disabled={isLoading}
@@ -201,7 +135,7 @@ export function SignupForm() {
                   className="flex items-center gap-2"
                 >
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating account…
+                  Sending OTP…
                 </motion.span>
               ) : (
                 <motion.span
@@ -211,7 +145,7 @@ export function SignupForm() {
                   exit={{ opacity: 0 }}
                   className="flex items-center gap-2"
                 >
-                  Create account
+                  Continue
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                 </motion.span>
               )}
@@ -222,14 +156,14 @@ export function SignupForm() {
 
       {/* Trust badges */}
       <motion.div
-        custom={6}
+        custom={3}
         variants={fadeUp}
         initial="hidden"
         animate="visible"
-        className="mt-6 pt-5 border-t border-[#F1F5F9] flex items-center justify-center gap-6"
+        className="mt-8 pt-6 border-t border-[#F1F5F9] flex items-center justify-center gap-6"
       >
-        {["256-bit SSL", "GDPR Compliant", "99.9% Uptime"].map((badge) => (
-          <span key={badge} className="flex items-center gap-1 text-[10px] font-medium text-[#94A3B8] uppercase tracking-wider">
+        {["Secure OTP", "Privacy Protected", "Instant Access"].map((badge) => (
+          <span key={badge} className="flex items-center gap-1.5 text-[10px] font-medium text-[#94A3B8] uppercase tracking-wider">
             <span className="h-1.5 w-1.5 rounded-full bg-[#34D399] inline-block" />
             {badge}
           </span>

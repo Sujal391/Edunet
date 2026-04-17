@@ -2,7 +2,7 @@ export const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_URL;
 
 export const API_ENDPOINTS = {
-    LOGIN: "/access/",
+    LOGIN: "/api-login/",
     REFRESH: "/refresh/",
     SCHOOL: "/SchoolView/",
     STAFF: "/StaffView/",
@@ -15,4 +15,8 @@ export const API_ENDPOINTS = {
     DIVISION_SET: "/divisionSet/",
     SET_SUBJECT: "/setSubject/",
     SYLLABUS: "/syllabus/",
+    GET_TEACHER: "/getteacher/",
+    ASSIGN_CLASS: "/assignClass/",
+    SEND_OTP: "/send-otp/",
+    VERIFY_OTP: "/verify-otp/",
 }

@@ -148,7 +148,17 @@ export async function getPublishedFormLink(): Promise<{ form_link: string }> {
     throw new Error(message)
   }
 
-  return response.json()
+  const data = await response.json()
+  
+  // If the backend returns a relative URL, prepend the API_BASE_URL
+  if (data.form_link && data.form_link.startsWith("/")) {
+    const baseUrl = (API_BASE_URL || "").endsWith("/") 
+      ? API_BASE_URL?.slice(0, -1) 
+      : API_BASE_URL
+    data.form_link = `${baseUrl}${data.form_link}`
+  }
+
+  return data
 }
 
 export async function saveSchoolClasses(classes: string[]): Promise<void> {
@@ -175,6 +185,7 @@ export async function saveSchoolClasses(classes: string[]): Promise<void> {
 export interface Division {
   id?: number
   SchoolClass: number | null
+  class_name: string
   division: string
   capacity: number | null
 }
@@ -360,6 +371,57 @@ export async function deleteSyllabus(id: number): Promise<void> {
 
   if (!response.ok) {
     let message = "Failed to delete syllabus."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+}
+
+export interface Teacher {
+  id: number
+  name: string
+}
+
+export async function getTeachers(): Promise<Teacher[]> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.GET_TEACHER}`
+  const response = await fetchWithAuth(url)
+
+  if (!response.ok) {
+    let message = "Failed to fetch teachers."
+    try {
+      const err = await response.json()
+      message = err?.detail || err?.message || message
+    } catch {
+      // Ignore
+    }
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return Array.isArray(data) ? data : (data.data ?? data.results ?? [])
+}
+
+export interface AssignClassPayload {
+  is_class_teacher: boolean
+  teacher: number
+  subject: number
+  division: number
+}
+
+export async function assignClass(payload: AssignClassPayload): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.ASSIGN_CLASS}`
+  const response = await fetchWithAuth(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    let message = "Failed to assign teacher."
     try {
       const err = await response.json()
       message = err?.detail || err?.message || message

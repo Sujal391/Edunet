@@ -4,9 +4,12 @@ import { useCallback, useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   AlertCircle,
+  Check,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  Copy,
+  ExternalLink,
   Eye,
   FileText,
   IndianRupee,
@@ -17,7 +20,7 @@ import {
   X,
 } from "lucide-react"
 
-import { getAdmissionForms, toggleFormStatus } from "@/lib/forms"
+import { getAdmissionForms, toggleFormStatus, getPublishedFormLink } from "@/lib/forms"
 import type { AdmissionFormResponse } from "@/lib/form-builder-config"
 import PrincipalFormBuilder from "@/components/forms/principal-form-builder"
 import { Button } from "@/components/ui/button"
@@ -274,12 +277,12 @@ function FormTableRow({
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
           <Switch
-            checked={form.is_published}
+            checked={form.is_active}
             onCheckedChange={() => onPublishToggle(form.id)}
             disabled={isToggling}
           />
-          <span className={`text-xs font-medium ${form.is_published ? "text-blue-600" : "text-slate-400"}`}>
-            {form.is_published ? "Published" : "Draft"}
+          <span className={`text-xs font-medium ${form.is_active ? "text-blue-600" : "text-slate-400"}`}>
+            {form.is_active ? "Active" : "Inactive"}
           </span>
         </div>
       </td>
@@ -293,9 +296,71 @@ function FormTableRow({
   )
 }
 
+// ─── Published Link Card ──────────────────────────────────────────────────────
+function PublishedLinkCard({ link }: { link: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(link)
+    setCopied(true)
+    toast.success("Link copied to clipboard")
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (!link) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="group relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-5 shadow-sm hover:shadow-md transition-all"
+    >
+      <div className="absolute top-0 right-0 -mr-16 -mt-16 h-40 w-40 rounded-full bg-blue-50/50 blur-3xl group-hover:bg-blue-100/50 transition-colors" />
+
+      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-blue-200 shadow-lg shrink-0">
+            <ExternalLink className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 leading-tight">Published Admission Form</h3>
+            <p className="text-xs text-blue-600 font-medium">Link is active and ready to share</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="relative flex-1 sm:w-[320px] lg:w-[400px]">
+            <div className="h-10 flex items-center rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-10 font-mono text-xs text-slate-600 shadow-inner overflow-hidden whitespace-nowrap">
+              <span className="truncate">{link}</span>
+            </div>
+            <button
+              onClick={handleCopy}
+              className="absolute right-1 top-1 h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white transition-all shadow-sm"
+              title="Copy to clipboard"
+            >
+              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+          <Button
+            asChild
+            variant="outline"
+            className="h-10 px-4 rounded-xl border-blue-100 bg-blue-50/30 text-blue-600 hover:bg-blue-600 hover:text-white transition-all gap-2"
+          >
+            <a href={link} target="_blank" rel="noopener noreferrer">
+              Preview Form
+              <ChevronRight className="h-4 w-4" />
+            </a>
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdmissionFormPage() {
   const [forms, setForms] = useState<AdmissionFormResponse[]>([])
+  const [formLink, setFormLink] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
@@ -307,8 +372,12 @@ export default function AdmissionFormPage() {
     setLoading(true)
     setError("")
     try {
-      const data = await getAdmissionForms()
+      const [data, linkData] = await Promise.all([
+        getAdmissionForms(),
+        getPublishedFormLink().catch(() => ({ form_link: "" }))
+      ])
       setForms(data)
+      setFormLink(linkData.form_link)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load forms.")
     } finally {
@@ -331,6 +400,7 @@ export default function AdmissionFormPage() {
     try {
       await toggleFormStatus(formId)
       toast.success("Form status updated successfully")
+      // After toggling, we refresh to ensure the single-active-form constraint is reflected
       await fetchForms()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update form status")
@@ -454,6 +524,11 @@ export default function AdmissionFormPage() {
               </motion.div>
             ))}
           </div>
+        ) : null}
+
+        {/* Active Link Section */}
+        {!loading && formLink ? (
+          <PublishedLinkCard link={formLink} />
         ) : null}
 
         {/* Main card */}

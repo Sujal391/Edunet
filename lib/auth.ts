@@ -139,7 +139,7 @@ export async function loginUser(credentials: LoginRequest): Promise<LoginRespons
   });
 
   if (!response.ok) {
-    let message = "Invalid username or password.";
+    let message = "Invalid email/mobile or password.";
     try {
       const err = await response.json();
       message = err?.detail || err?.message || message;
@@ -154,7 +154,59 @@ export async function loginUser(credentials: LoginRequest): Promise<LoginRespons
     setTokens(accessToken, data.refresh);
   }
 
+  // Ensure roles is available at the top level for backward compatibility
+  if (data.user?.roles && !data.roles) {
+    data.roles = data.user.roles;
+  }
+
   return data;
+}
+
+// ─── OTP Registration ──────────────────────────────────────────────────────────
+
+export async function sendOtp(payload: { email?: string; mobile?: string }): Promise<void> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.SEND_OTP}`;
+
+  const response = await apiFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = "Failed to send OTP.";
+    try {
+      const err = await response.json();
+      message = err?.detail || err?.message || message;
+    } catch { /* ignore */ }
+    throw new Error(message);
+  }
+}
+
+export async function verifyOtp(payload: { 
+  email?: string; 
+  mobile?: string; 
+  otp: string; 
+  password: string;
+}): Promise<any> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.VERIFY_OTP}`;
+
+  const response = await apiFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = "OTP verification failed.";
+    try {
+      const err = await response.json();
+      message = err?.detail || err?.message || message;
+    } catch { /* ignore */ }
+    throw new Error(message);
+  }
+
+  return await response.json();
 }
 
 // ─── Token Refresh ────────────────────────────────────────────────────────────
@@ -282,5 +334,6 @@ export function getDashboardRoute(roles: string[]): string {
   if (role === "principal") return "/principal";
   if (role === "librarian") return "/librarian";
   if (role === "clerk" || role === "fees_clerk") return "/clerk";
+  if (role === "temp_user") return "/user";
   return "/";
 }

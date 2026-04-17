@@ -1,12 +1,19 @@
 export interface LoginRequest {
-  username: string;
+  email?: string;
+  mobile?: string;
   password: string;
 }
 
 export interface LoginResponse {
-  access?: string;   // present if backend returns token in body
-  refresh?: string;  // present if backend returns token in body
-  roles: string[];
+  access?: string;
+  refresh?: string;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+    roles: string[];
+  };
+  roles?: string[]; // for backward compatibility/direct access
 }
 
 export interface School {

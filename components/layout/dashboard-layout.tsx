@@ -57,6 +57,11 @@ const roleConfig: Record<string, { gradient: string; badge: string; badgeText: s
     badge: "bg-cyan-500",
     badgeText: "IN",
   },
+  Applicant: {
+    gradient: "from-[#6366F1] via-[#8B5CF6] to-[#D946EF]",
+    badge: "bg-indigo-500",
+    badgeText: "AP",
+  },
 };
 
 function SidebarContent({
@@ -346,7 +351,7 @@ export function DashboardLayout({
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setSidebarOpen(false)}
-                className="absolute top-4 right-4 z-10 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
+                className="absolute top-4 right-4 z-50 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
               >
                 <X className="h-4 w-4" />
               </motion.button>

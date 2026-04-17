@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -34,30 +34,23 @@ import { getPublishedFormLink } from "@/lib/forms";
 import { toast } from "sonner";
 
 export default function LandingPage() {
-  const [isLoadingLink, setIsLoadingLink] = useState(false);
+  const [formLink, setFormLink] = useState("");
 
-  const handleGetStarted = async () => {
-    setIsLoadingLink(true);
-    try {
-      const { form_link } = await getPublishedFormLink();
-      if (form_link) {
-        window.open(form_link, "_blank");
-      } else {
-        toast.error("Admissions are currently closed. Please check back later.");
-      }
-    } catch (error) {
-      console.error("Failed to fetch form link:", error);
-      toast.error("Something went wrong. Please try again later.");
-    } finally {
-      setIsLoadingLink(false);
-    }
+  useEffect(() => {
+    getPublishedFormLink()
+      .then((data) => setFormLink(data.form_link))
+      .catch((err) => console.error("Failed to fetch link", err));
+  }, []);
+
+  const handleGetStarted = () => {
+    window.location.href = "/signup";
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8FAFC] via-white to-[#EEF2FF]">
 
       {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-[#34D399]/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
+      <header className="sticky top-0 z-50 w-full border-b border-[#34D399]/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-3">
@@ -99,11 +92,9 @@ export default function LandingPage() {
                 size="sm" 
                 className="rounded-lg bg-[#4F46E5] text-white shadow-md hover:bg-[#3730A3] transition-all duration-300" 
                 onClick={handleGetStarted}
-                disabled={isLoadingLink}
               >
-                {isLoadingLink ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
                 Get Started
-                {!isLoadingLink && <ArrowRight className="ml-2 h-3 w-3" />}
+                <ArrowRight className="ml-2 h-3 w-3" />
               </Button>
               <Button variant="outline" size="icon" className="md:hidden rounded-lg border-[#34D399]/30 text-[#4F46E5]">
                 <Menu className="h-4 w-4" />
@@ -112,17 +103,47 @@ export default function LandingPage() {
           </div>
         </div>
       </header>
+      
+      {/* Admission Marquee */}
+      {formLink && (
+        <div className="sticky top-16 z-40 overflow-hidden bg-blue-600 py-2 border-b border-blue-700/20 shadow-sm">
+          <motion.div
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ 
+              duration: 30, 
+              repeat: Infinity, 
+              ease: "linear" 
+            }}
+            className="flex whitespace-nowrap items-center gap-12 px-4"
+          >
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex items-center gap-3 text-sm font-medium text-white">
+                <Sparkles className="h-4 w-4 text-white/80" />
+                <span>Admission forms are available! Follow the link to apply:</span>
+                <a 
+                  href={formLink} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full border border-white/20 underline decoration-white/40 underline-offset-4 transition-all"
+                >
+                  {formLink}
+                </a>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      )}
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-16 lg:py-24">
+      <section className="relative overflow-hidden pt-8 pb-16 lg:pt-12 lg:pb-24">
         {/* Soft background elements */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-[#34D399]/10 blur-3xl"></div>
           <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-[#4F46E5]/5 blur-3xl"></div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-[#EEF2FF] blur-3xl"></div>
         </div>
         
-        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <Badge 
@@ -153,11 +174,9 @@ export default function LandingPage() {
                   size="lg" 
                   className="rounded-lg bg-[#4F46E5] text-white shadow-md hover:bg-[#3730A3] transition-all duration-300 transform hover:scale-105"
                   onClick={handleGetStarted}
-                  disabled={isLoadingLink}
                 >
-                  {isLoadingLink ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Start Free Trial
-                  {!isLoadingLink && <ArrowRight className="ml-2 h-4 w-4" />}
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <Button 
                   size="lg" 
@@ -478,11 +497,9 @@ export default function LandingPage() {
                     size="lg" 
                     className="rounded-lg bg-[#4F46E5] text-white shadow-md hover:bg-[#3730A3] transition-all duration-300 transform hover:scale-105" 
                     onClick={handleGetStarted}
-                    disabled={isLoadingLink}
                   >
-                    {isLoadingLink ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Start Free Trial
-                    {!isLoadingLink && <ArrowRight className="ml-2 h-4 w-4" />}
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                   <Button 
                     size="lg" 

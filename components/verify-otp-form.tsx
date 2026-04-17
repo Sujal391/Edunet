@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, User, Lock, ArrowRight, Loader2 } from "lucide-react";
-import Link from "next/link";
-import { loginUser, getDashboardRoute } from "@/lib/auth";
+import { Eye, EyeOff, Lock, KeyRound, ArrowRight, Loader2, Mail, Phone } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { verifyOtp } from "@/lib/auth";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -23,59 +22,49 @@ const fadeUp = {
   }),
 };
 
-function LoginFormInner() {
+function VerifyOtpInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const identifier = searchParams.get("identifier") || "";
+  const type = searchParams.get("type") || "email";
+
+  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
-
-  const searchParams = useSearchParams();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const router = useRouter();
-
-  useEffect(() => {
-    const identifier = searchParams.get("identifier");
-    if (identifier) {
-      setUsername(identifier);
-    }
-  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    // Determine payload based on input type
-    const isEmail = username.includes("@");
-    const isMobile = /^\d+$/.test(username);
-    
-    let payload: any = { password };
-
-    if (isEmail) {
-      payload.email = username;
-    } else if (isMobile) {
-      if (username.length !== 10) {
-        setError("Mobile number must be exactly 10 digits.");
-        setIsLoading(false);
-        return;
-      }
-      payload.mobile = username;
-    } else {
-      setError("Please enter a valid email or 10-digit mobile number.");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       setIsLoading(false);
       return;
     }
 
     try {
-      const response = await loginUser(payload);
-      // roles might be top-level or in user.roles depending on backend
-      const roles = response.roles || response.user?.roles || [];
-      const route = getDashboardRoute(roles);
-      router.push(route);
+      const payload: any = {
+        otp: otp.trim(),
+        password: password,
+      };
+
+      if (type === "email") {
+        payload.email = identifier;
+      } else {
+        payload.mobile = identifier;
+      }
+
+      await verifyOtp(payload);
+      
+      router.push(`/login?identifier=${encodeURIComponent(identifier)}`);
     } catch (err: any) {
-      setError(err.message || "Failed to login. Please verify your credentials.");
-      console.error("Login failed:", err);
+      setError(err.message || "Verification failed. Please check your OTP and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -90,39 +79,35 @@ function LoginFormInner() {
     >
       {/* Header */}
       <motion.div custom={0} variants={fadeUp} initial="hidden" animate="visible" className="mb-8">
-        <h1 className="text-3xl font-bold text-[#0F172A] mb-2">Sign in</h1>
-        <p className="text-[#64748B] text-sm">
-          New to EduManage?{" "}
-          <Link
-            href="/signup"
-            className="font-semibold text-[#4F46E5] hover:text-[#3730A3] transition-colors underline underline-offset-2"
-          >
-            Create a free account
-          </Link>
+        <h1 className="text-3xl font-bold text-[#0F172A] mb-2">Verify OTP</h1>
+        <p className="text-[#64748B] text-sm flex items-center gap-2">
+          {type === "email" ? <Mail className="h-4 w-4" /> : <Phone className="h-4 w-4" />}
+          OTP sent to <span className="font-semibold text-[#0F172A]">{identifier}</span>
         </p>
       </motion.div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Username */}
+        {/* OTP */}
         <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible" className="space-y-1.5">
-          <Label htmlFor="username" className="text-sm font-semibold text-[#374151]">
-            Username
+          <Label htmlFor="otp" className="text-sm font-semibold text-[#374151]">
+            One-Time Password
           </Label>
           <div className="relative">
-            <User
+            <KeyRound
               className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
-                focused === "username" ? "text-[#4F46E5]" : "text-[#94A3B8]"
+                focused === "otp" ? "text-[#4F46E5]" : "text-[#94A3B8]"
               }`}
             />
             <Input
-              id="username"
+              id="otp"
               type="text"
-              placeholder="Enter your username"
+              placeholder="Enter 6-digit OTP"
               required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              onFocus={() => setFocused("username")}
+              maxLength={10}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              onFocus={() => setFocused("otp")}
               onBlur={() => setFocused(null)}
               className="pl-10 h-12 rounded-xl border-[#E2E8F0] bg-white text-[#0F172A] placeholder:text-[#CBD5E1] shadow-sm focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 transition-all duration-200"
             />
@@ -131,17 +116,9 @@ function LoginFormInner() {
 
         {/* Password */}
         <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible" className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-semibold text-[#374151]">
-              Password
-            </Label>
-            <a
-              href="#"
-              className="text-xs font-medium text-[#4F46E5] hover:text-[#3730A3] transition-colors underline-offset-2 hover:underline"
-            >
-              Forgot password?
-            </a>
-          </div>
+          <Label htmlFor="password" className="text-sm font-semibold text-[#374151]">
+            Set Password
+          </Label>
           <div className="relative">
             <Lock
               className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
@@ -180,6 +157,49 @@ function LoginFormInner() {
           </div>
         </motion.div>
 
+        {/* Confirm Password */}
+        <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible" className="space-y-1.5">
+          <Label htmlFor="confirm-password" className="text-sm font-semibold text-[#374151]">
+            Confirm Password
+          </Label>
+          <div className="relative">
+            <Lock
+              className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200 ${
+                focused === "confirm-password" ? "text-[#4F46E5]" : "text-[#94A3B8]"
+              }`}
+            />
+            <Input
+              id="confirm-password"
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="••••••••"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              onFocus={() => setFocused("confirm-password")}
+              onBlur={() => setFocused(null)}
+              className="pl-10 pr-11 h-12 rounded-xl border-[#E2E8F0] bg-white text-[#0F172A] placeholder:text-[#CBD5E1] shadow-sm focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 transition-all duration-200"
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => setShowConfirmPassword((v) => !v)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#475569] transition-colors"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={showConfirmPassword ? "hide" : "show"}
+                  initial={{ opacity: 0, scale: 0.7 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.7 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </motion.span>
+              </AnimatePresence>
+            </button>
+          </div>
+        </motion.div>
+
         {/* Error Message */}
         {error && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
@@ -188,7 +208,7 @@ function LoginFormInner() {
         )}
 
         {/* Submit */}
-        <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible" className="pt-1">
+        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="pt-2">
           <Button
             type="submit"
             disabled={isLoading}
@@ -204,7 +224,7 @@ function LoginFormInner() {
                   className="flex items-center gap-2"
                 >
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing in…
+                  Verifying…
                 </motion.span>
               ) : (
                 <motion.span
@@ -214,7 +234,7 @@ function LoginFormInner() {
                   exit={{ opacity: 0 }}
                   className="flex items-center gap-2"
                 >
-                  Sign in
+                  Complete Registration
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                 </motion.span>
               )}
@@ -229,10 +249,10 @@ function LoginFormInner() {
         variants={fadeUp}
         initial="hidden"
         animate="visible"
-        className="mt-6 pt-5 border-t border-[#F1F5F9] flex items-center justify-center gap-6"
+        className="mt-8 pt-6 border-t border-[#F1F5F9] flex items-center justify-center gap-6"
       >
-        {["256-bit SSL", "GDPR Compliant", "99.9% uptime"].map((badge) => (
-          <span key={badge} className="flex items-center gap-1 text-[10px] font-medium text-[#94A3B8] uppercase tracking-wider">
+        {["256-bit Encryption", "Secure Session", "Double Verified"].map((badge) => (
+          <span key={badge} className="flex items-center gap-1.5 text-[10px] font-medium text-[#94A3B8] uppercase tracking-wider">
             <span className="h-1.5 w-1.5 rounded-full bg-[#34D399] inline-block" />
             {badge}
           </span>
@@ -242,10 +262,10 @@ function LoginFormInner() {
   );
 }
 
-export function LoginForm() {
+export function VerifyOtpForm() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" /></div>}>
-      <LoginFormInner />
+      <VerifyOtpInner />
     </Suspense>
   );
 }
